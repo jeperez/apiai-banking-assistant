@@ -21,9 +21,12 @@ firebase.initializeApp(config);
 function doTransaction(accountKey, transaction) {
     firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
     // todo update balance
-    // firebase.database().ref('accounts/' + parameters.account.toLowerCase()).once('value').then(function(snapshot) {
-    //     var todo
-    // });
+    firebase.database().ref('accounts/' + parameters.account.toLowerCase()).once('value').then(function(snapshot) {
+        var balance = snapshot.val().balance;
+        balance.amount += transaction.money.amount
+        balance.currency = transaction.money.currency
+        firebase.database().ref('accounts/' + accountKey + '/balance').set(balance);
+    });
 
     console.log('Doing transaction on Firebase: ' + transaction);
 }
