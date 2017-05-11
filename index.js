@@ -17,11 +17,16 @@ var config = {
     messagingSenderId: "196891096619"
 };
 firebase.initializeApp(config);
-firebase.database().ref('accounts/john').set({
-    name: "John"
-});
 
+function doTransaction(accountKey, transaction) {
+    firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
+    // todo update balance
+    // firebase.database().ref('accounts/' + parameters.account.toLowerCase()).once('value').then(function(snapshot) {
+    //     var todo
+    // });
 
+    console.log('Doing transaction on Firebase.');
+}
 
 restService.post('/hook', function (req, res) {
 
@@ -37,7 +42,11 @@ restService.post('/hook', function (req, res) {
                 if (requestBody.result.parameters) {
                     var parameters = requestBody.result.parameters;
 
-                    // todo doTransaction(parameters.account, parameters.money);
+                    doTransaction(parameters.account.toLowerCase(), {
+                        sender: parameters.account,
+                        money: parameters.money
+                    })
+
                 }
 
                 // remove these lines
