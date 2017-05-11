@@ -18,17 +18,35 @@ var config = {
 };
 firebase.initializeApp(config);
 
-function doTransaction(accountKey, transaction) {
-    firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
-    // todo update balance
-    firebase.database().ref('accounts/' + accountKey.toLowerCase()).once('value').then(function(snapshot) {
-        var balance = snapshot.val().balance;
-        balance.amount += transaction.money.amount
-        balance.currency = transaction.money.currency
-        firebase.database().ref('accounts/' + accountKey + '/balance').set(balance);
+function doTransaction(accountKey, transaction, onError, onSuccess) {
+
+    firebase.database().ref('accounts/' + transaction.sender).once('value').then(function (snapshot) {
+        var userBalance = snapshot.val().balance;
+
+        if (userBalance.amount < transaction.money.amount) {
+            onError('Sorry, you do not have enough balance.');
+        } else {
+
+            // charge balance of sender
+            userBalance.amount -= transaction.money.amount;
+            firebase.database().ref('accounts/' + transaction.sender + '/balance').set(userBalance);
+
+            // update lastTransaction of receiver
+            firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
+            
+            // increase balance of receiver
+            firebase.database().ref('accounts/' + accountKey).once('value').then(function (snapshot) {
+                var balance = snapshot.val().balance;
+                balance.amount += transaction.money.amount;
+                balance.currency = transaction.money.currency;
+                firebase.database().ref('accounts/' + accountKey + '/balance').set(balance);
+            });
+
+            console.log('Doing transaction on Firebase: ' + transaction.sender + ' -> (' + transaction.money.amount + ') -> ' + accountKey);
+        }
     });
 
-    console.log('Doing transaction on Firebase: ' + transaction);
+
 }
 
 restService.post('/hook', function (req, res) {
@@ -47,25 +65,16 @@ restService.post('/hook', function (req, res) {
                     doTransaction(parameters.account.toLowerCase(), {
                         sender: parameters.username.toLowerCase(),
                         money: parameters.money
+                    }, function (errorMessage) {
+                        returnError(res, errorMessage);
+                    }, function (successMessage) {
+                        returnSuccess(res, requestBody.result.fulfillment.speech, successMessage);
                     })
 
                 }
-
-                if (requestBody.result.fulfillment) {
-                    // todo: you can edit fulfilment response (such as return balance value)
-                }
-
             }
         }
 
-        console.log('result: ', speech);
-
-        // todo return result inside fulfillment node
-        return res.json({
-            speech: speech,
-            displayText: speech,
-            source: 'apiai-webhook-sample'
-        });
     } catch (err) {
         console.error("Can't process request", err);
 
@@ -77,6 +86,24 @@ restService.post('/hook', function (req, res) {
         });
     }
 });
+
+function returnError(res, errorMessage) {
+    return res.json({
+        speech: errorMessage,
+        displayText: errorMessage,
+        source: 'apiai-webhook-sample'
+    });
+}
+
+function returnSuccess(res, speech, successMessage) {
+    var result = speech + ' ' + successMessage;
+    console.log('result: ', result);
+    return res.json({
+        speech: result,
+        displayText: result,
+        source: 'apiai-webhook-sample'
+    });
+}
 
 restService.listen((process.env.PORT || 5000), function () {
     console.log("Server listening");
