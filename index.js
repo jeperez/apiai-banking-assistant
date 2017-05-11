@@ -43,6 +43,7 @@ function doTransaction(accountKey, transaction, onError, onSuccess) {
             });
 
             console.log('Doing transaction on Firebase: ' + transaction.sender + ' -> (' + transaction.money.amount + ') -> ' + accountKey);
+            onSuccess('Your current balance is ' + userBalance.amount + ' ' + userBalance.currency + ' after transaction.');
         }
     });
 
