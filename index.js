@@ -25,7 +25,7 @@ function doTransaction(accountKey, transaction) {
     //     var todo
     // });
 
-    console.log('Doing transaction on Firebase.');
+    console.log('Doing transaction on Firebase: ' + transaction);
 }
 
 restService.post('/hook', function (req, res) {
@@ -33,7 +33,6 @@ restService.post('/hook', function (req, res) {
     console.log('hook request');
 
     try {
-        var speech = 'empty speech';
 
         if (req.body) {
             var requestBody = req.body;
@@ -43,24 +42,16 @@ restService.post('/hook', function (req, res) {
                     var parameters = requestBody.result.parameters;
 
                     doTransaction(parameters.account.toLowerCase(), {
-                        sender: parameters.account,
+                        sender: parameters.username.toLowerCase(),
                         money: parameters.money
                     })
 
                 }
 
-                // remove these lines
-                speech = '';
-
                 if (requestBody.result.fulfillment) {
-                    speech += requestBody.result.fulfillment.speech;
-                    speech += ' ';
+                    // todo: you can edit fulfilment response (such as return balance value)
                 }
 
-                if (requestBody.result.action) {
-                    speech += 'action: ' + requestBody.result.action;
-                }
-                // end: remove these lines
             }
         }
 
