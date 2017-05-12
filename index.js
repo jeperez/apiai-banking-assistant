@@ -20,32 +20,45 @@ firebase.initializeApp(config);
 
 function doTransaction(accountKey, transaction, onError, onSuccess) {
 
-    firebase.database().ref('accounts/' + transaction.sender).once('value').then(function (snapshot) {
-        var userBalance = snapshot.val().balance;
+    firebase.database().ref('accounts').once('value', function (snapshot) {
 
-        if (userBalance.amount < transaction.money.amount) {
-            onError('Sorry, you do not have enough balance.');
-        } else {
+        if (snapshot.hasChild(accountKey)) {
 
-            // charge balance of sender
-            userBalance.amount -= transaction.money.amount;
-            firebase.database().ref('accounts/' + transaction.sender + '/balance').set(userBalance);
+            firebase.database().ref('accounts/' + transaction.sender).once('value').then(function (snapshot) {
+                var userBalance = snapshot.val().balance;
 
-            // update lastTransaction of receiver
-            firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
-            
-            // increase balance of receiver
-            firebase.database().ref('accounts/' + accountKey).once('value').then(function (snapshot) {
-                var balance = snapshot.val().balance;
-                balance.amount += transaction.money.amount;
-                balance.currency = transaction.money.currency;
-                firebase.database().ref('accounts/' + accountKey + '/balance').set(balance);
+                if (userBalance.amount < transaction.money.amount) {
+                    onError('Sorry, you do not have enough balance.');
+                } else {
+
+                    // charge balance of sender
+                    userBalance.amount -= transaction.money.amount;
+                    firebase.database().ref('accounts/' + transaction.sender + '/balance').set(userBalance);
+
+                    // update lastTransaction of receiver
+                    firebase.database().ref('accounts/' + accountKey + '/lastTransaction').set(transaction);
+
+                    // increase balance of receiver
+                    firebase.database().ref('accounts/' + accountKey).once('value').then(function (snapshot) {
+                        var balance = snapshot.val().balance;
+                        balance.amount += transaction.money.amount;
+                        balance.currency = transaction.money.currency;
+                        firebase.database().ref('accounts/' + accountKey + '/balance').set(balance);
+                    });
+
+                    console.log('Doing transaction on Firebase: ' + transaction.sender + ' -> (' + transaction.money.amount + ') -> ' + accountKey);
+                    onSuccess('Your current balance is ' + userBalance.amount + ' ' + userBalance.currency + ' after transaction.');
+                }
             });
 
-            console.log('Doing transaction on Firebase: ' + transaction.sender + ' -> (' + transaction.money.amount + ') -> ' + accountKey);
-            onSuccess('Your current balance is ' + userBalance.amount + ' ' + userBalance.currency + ' after transaction.');
+        } else {
+
+            onError('Sorry. ' + accountKey + ' could not found. Try another name later.');
+
         }
     });
+
+
 
 
 }
@@ -60,18 +73,26 @@ restService.post('/hook', function (req, res) {
             var requestBody = req.body;
 
             if (requestBody.result) {
-                if (requestBody.result.parameters) {
-                    var parameters = requestBody.result.parameters;
 
-                    doTransaction(parameters.account.toLowerCase(), {
-                        sender: parameters.username.toLowerCase(),
-                        money: parameters.money
-                    }, function (errorMessage) {
-                        returnError(res, errorMessage);
-                    }, function (successMessage) {
-                        returnSuccess(res, requestBody.result.fulfillment.speech, successMessage);
-                    })
+                if (requestBody.result.action === 'actionLogin') {
 
+                    // todo: check sender exists from firebase
+                    returnSuccess(res, requestBody.result.fulfillment.speech, '');
+
+                } else if (requestBody.result.action === 'actionTransfer') {
+
+                    if (requestBody.result.parameters) {
+                        var parameters = requestBody.result.parameters;
+
+                        doTransaction(parameters.account.toLowerCase(), {
+                            sender: parameters.username.toLowerCase(),
+                            money: parameters.money
+                        }, function (errorMessage) {
+                            returnError(res, errorMessage);
+                        }, function (successMessage) {
+                            returnSuccess(res, requestBody.result.fulfillment.speech, successMessage);
+                        })
+                    }
                 }
             }
         }
