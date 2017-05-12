@@ -76,19 +76,20 @@ restService.post('/hook', function (req, res) {
 
                 if (requestBody.result.action === 'actionLogin') {
 
-                    // todo: check sender exists from firebase
-                    firebase.database().ref('accounts').once('value', function(snapshot) {
+                    if (requestBody.result.parameters) {
+                        var parameters = requestBody.result.parameters;
 
-                        if (snapshot.hasChild(parameters.username.toLowerCase())) {
+                        // check sender exists from firebase
+                        firebase.database().ref('accounts').once('value', function (snapshot) {
 
-                            returnSuccess(res, requestBody.result.fulfillment.speech, '');
+                            if (snapshot.hasChild(parameters.username.toLowerCase())) {
+                                returnSuccess(res, requestBody.result.fulfillment.speech, '');
+                            } else {
+                                returnError(res, 'Sorry ' + parameters.username + '. I could not find your registration. Please, try again.');
+                            }
+                        });
 
-                        } else {
-
-                            returnError(res, 'Sorry ' + parameters.username + '. I could not find your registration. Please, try again.');
-
-                        }
-                    });
+                    }
 
                 } else if (requestBody.result.action === 'actionTransfer') {
 
