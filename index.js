@@ -107,7 +107,7 @@ restService.post('/hook', function (req, res) {
                     if (requestBody.result.parameters) {
                         var parameters = requestBody.result.parameters;
 
-                        firebase.database().ref('accounts').child(parameters.username).once('value', function (snapshot) {
+                        firebase.database().ref('accounts').child(parameters.username.toLowerCase()).once('value', function (snapshot) {
                             var balance = snapshot.val().balance;
 
                             var responseText = '';
