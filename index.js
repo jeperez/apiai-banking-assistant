@@ -57,10 +57,6 @@ function doTransaction(accountKey, transaction, onError, onSuccess) {
 
         }
     });
-
-
-
-
 }
 
 restService.post('/hook', function (req, res) {
@@ -105,6 +101,26 @@ restService.post('/hook', function (req, res) {
                             returnSuccess(res, requestBody.result.fulfillment.speech, successMessage);
                         })
                     }
+
+                } else if (requestBody.result.action === 'actionCheckBalance') {
+
+                    if (requestBody.result.parameters) {
+                        var parameters = requestBody.result.parameters;
+
+                        firebase.database().ref('accounts').child(parameters.username).once('value', function (snapshot) {
+                            var balance = snapshot.val().balance;
+
+                            var responseText = '';
+                            if (balance.amount > 2000) {
+                                responseText = 'Oh, you are rich! ';
+                            }
+
+                            responseText += 'You have ' + balance.amount + ' ' + balance.currency;
+                            returnSuccess(res, responseText, '');
+                        });
+
+                    }
+
                 }
             }
         }
